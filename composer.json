@@ -1,0 +1,38 @@
+{
+    "name": "jb-support/multiple-sitemaps",
+    "type": "contao-bundle",
+    "description": "Multiple Sitemaps bundle for Contao Open Source CMS",
+    "homepage": "https://jb-support.de",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "JB-Support GmbH",
+            "email": "info@jb-support.de"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/jb-support/multiple-sitemaps/issues",
+        "source": "https://github.com/jb-support/multiple-sitemaps"
+    },
+    "require": {
+        "php": "^7.4 || ^8.0",
+        "contao/core-bundle": "^4.13"
+    },
+    "extra": {
+        "contao-manager-plugin": "JBSupport\\MultipleSitemapsBundle\\ContaoManager\\Plugin"
+    },
+    "autoload": {
+        "psr-4": {
+            "JBSupport\\MultipleSitemapsBundle\\": "src/"
+        },
+        "classmap": [
+            "src/Resources/contao/"
+        ],
+        "exclude-from-classmap": [
+            "src/Resources/contao/config/",
+            "src/Resources/contao/dca/",
+            "src/Resources/contao/languages/",
+            "src/Resources/contao/templates/"
+        ]
+    }
+}

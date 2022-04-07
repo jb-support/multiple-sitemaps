@@ -1,0 +1,9 @@
+services:
+    jb_multiple_sitemaps.listener.sitemaps_changed:
+        class: JBSupport\MultipleSitemapsBundle\EventListener\SitemapsChangedListener
+        public: true
+        arguments:
+            - "@router"
+            - "%kernel.cache_dir%"
+            - "@contao.framework"
+            - "@filesystem"

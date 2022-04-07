@@ -1,0 +1,7 @@
+controllers:
+    resource: ../../Controller/
+    type: annotation
+
+jb_multiple_sitemaps:
+    resource: .
+    type: jb_multiple_sitemaps
