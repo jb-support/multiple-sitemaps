@@ -73,7 +73,7 @@ class MultipleSitemapController extends AbstractController
         $urls = [];
         $rootPageIds = [];
         $tags = ['jb.sitemap'];
-        $tags[] = 'jb.sitemap.'.$jbSitemap->id;
+        $tags[] = 'jb.sitemap.'.$jbSitemap["id"];
 
         foreach ($rootPages as $rootPage) {
             $urls[] = $this->getPageAndArticleUrls((int) $rootPage->id, [(int)$rootPage->id], $jbSitemap);
@@ -107,7 +107,7 @@ class MultipleSitemapController extends AbstractController
 
         // Cache the response for a given time in the shared cache and tag it for invalidation purposes
         $response = new Response((string) $sitemap->saveXML(), 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
-        $response->setSharedMaxAge($jbSitemap["maxAge"]); // will be unset by the MakeResponsePrivateListener if a user is logged in
+        $response->setSharedMaxAge((int)$jbSitemap["maxAge"]); // will be unset by the MakeResponsePrivateListener if a user is logged in
 
         $this->tagResponse($tags);
 
@@ -145,7 +145,7 @@ class MultipleSitemapController extends AbstractController
         $sitemapIndex->appendChild($urlSet);
 
         $response = new Response((string) $sitemapIndex->saveXML(), 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
-        $response->setSharedMaxAge($jbSitemap["maxAge"]); // will be unset by the MakeResponsePrivateListener if a user is logged in
+        $response->setSharedMaxAge((int)$jbSitemap["maxAge"]); // will be unset by the MakeResponsePrivateListener if a user is logged in
 
         $this->tagResponse($tags);
 
