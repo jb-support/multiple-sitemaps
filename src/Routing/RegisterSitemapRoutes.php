@@ -8,6 +8,9 @@ use Symfony\Component\Config\Loader\Loader;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\ConnectionException;
+use Doctrine\DBAL\Exception\InvalidFieldNameException;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 
 /* THX TO Terminal42 UrlRewrite Extension for routing/caching hints */
 
@@ -60,16 +63,24 @@ class RegisterSitemapRoutes extends Loader
     /**
      * Generate the routes.
      */
-    private function generateRoutes(): \Generator
+    private function generateRoutes(): ?\Generator
     {
-        $sitemaps = $this->connection->fetchAllAssociative(
-            'SELECT id, filename FROM tl_jb_sitemap WHERE published=:published',
-            ['published' => 1]
-        );
+        try {
+            $sitemaps = $this->connection->fetchAllAssociative(
+                'SELECT id, filename FROM tl_jb_sitemap WHERE published=:published',
+                ['published' => 1]
+            );
 
-        foreach ($sitemaps as $sitemap) {
-            yield $this->createRoute($sitemap["filename"], $sitemap["id"]);
+            if ($sitemaps) {
+                foreach ($sitemaps as $sitemap) {
+                    yield $this->createRoute($sitemap["filename"], $sitemap["id"]);
+                }
+            }
+        } catch (\PDOException | ConnectionException | TableNotFoundException | InvalidFieldNameException $e) {
+            // Database not ready yet
         }
+
+        return null;
     }
 
     /**
