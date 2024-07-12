@@ -11,6 +11,10 @@ use Contao\CoreBundle\Routing\Page\PageRegistry;
 use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\CoreBundle\Controller\AbstractController;
 use Contao\PageModel;
+use Contao\NewsModel;
+use Contao\CalendarModel;
+use Contao\CalendarEventsModel;
+use Contao\NewsArchiveModel;
 use Contao\System;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\Request;
@@ -34,7 +38,7 @@ class MultipleSitemapController extends AbstractController
         $this->pageRegistry = $pageRegistry;
         $this->connection = $connection;
     }
-    
+
     public function index(Request $request): Response
     {
         if (!$request->attributes->has(RegisterSitemapRoutes::ATTRIBUTE_NAME)) {
@@ -79,7 +83,6 @@ class MultipleSitemapController extends AbstractController
             $urls[] = $this->getPageAndArticleUrls((int) $rootPage->id, [(int)$rootPage->id], $jbSitemap);
             $rootPageIds[] = $rootPage->id;
         }
-
         $urls = array_unique(array_merge(...$urls));
 
         $sitemap = new \DOMDocument('1.0', 'UTF-8');
@@ -253,5 +256,53 @@ class MultipleSitemapController extends AbstractController
         }
 
         return array_merge(...$result);
+    }
+
+    protected function getNewsUrls($jbSitemap): array {
+        $newsArchiveIds = isset($jbSitemap["newsList"]) ? unserialize($jbSitemap["newsList"]) : [];
+        $newsArchiveAdapter = $this->getContaoAdapter(NewsArchiveModel::class);
+
+        $newsAdapter = $this->getContaoAdapter(NewsModel::class);
+
+        $pageAdapter = $this->getContaoAdapter(PageModel::class);
+
+        $aliases = [];
+
+        foreach($newsArchiveIds as $archiveId) {
+            $newsArchive = $newsArchiveAdapter->findById($archiveId);
+            $newsInArchive = $newsAdapter->findByPid($archiveId) ?? [];
+            $page = $pageAdapter->findById($newsArchive->jumpTo);
+            $pageAlias = $page->alias;
+
+            foreach($newsInArchive as $news) {
+                $aliases[] = !$news ?: $page->alias."/".$news->alias;
+            }
+        }
+
+        return $aliases;
+    }
+
+    protected function getEventsUrls($jbSitemap): array {
+        $calendarIds = isset($jbSitemap["eventsList"]) ? unserialize($jbSitemap["eventsList"]) : [];
+        $calendarAdapter = $this->getContaoAdapter(CalendarModel::class);
+
+        $eventAdapter = $this->getContaoAdapter(CalendarEventsModel::class);
+
+        $pageAdapter = $this->getContaoAdapter(PageModel::class);
+
+        $aliases = [];
+
+        foreach($calendarIds as $archiveId) {
+            $calendar = $calendarAdapter->findById($archiveId);
+            $newsInArchive = $eventAdapter->findByPid($archiveId) ?? [];
+            $page = $pageAdapter->findById($calendar->jumpTo);
+            $pageAlias = $page->alias;
+
+            foreach($newsInArchive as $news) {
+                $aliases[] = !$news ?: $page->alias."/".$news->alias;
+            }
+        }
+
+        return $aliases;
     }
 }
