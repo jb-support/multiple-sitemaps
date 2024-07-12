@@ -10,6 +10,8 @@ $GLOBALS['TL_LANG']['tl_jb_sitemap']['maxAge'] = ['Max. Age', 'HTTP cache time i
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['priority'] = ['Priority', '(https://developers.google.com/search/docs/advanced/sitemaps/build-sitemap?hl=de)'];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['indexMode'] = ['Indexing mode', 'Filter based on page settings'];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['rootPages'] = ['Root Pages', 'All pages within this node will be part of the sitemap'];
+$GLOBALS['TL_LANG']['tl_jb_sitemap']['newsList'] = ['News Archives', 'All news within the archive(s) will be part of the sitemap'];
+$GLOBALS['TL_LANG']['tl_jb_sitemap']['eventsList'] = ['Events Archives', 'All Events within the archive(s) will be part of the sitemap'];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['sitemaps'] = ['Sitemaps', 'Choose sitemaps for index file'];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['domain'] = ['Domain', 'Published domain for each included sitemaps'];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['calledDomain'] = 'Called domain';

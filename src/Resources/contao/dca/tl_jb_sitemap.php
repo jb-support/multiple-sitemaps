@@ -1,6 +1,13 @@
 <?php
 
+use Contao\System;
+use Contao\Backend;
+use Contao\BackendUser;
+use Contao\Controller;
+use Contao\Database;
 use Contao\DataContainer;
+use Contao\NewsBundle\Security\ContaoNewsPermissions;
+use Contao\CalendarModel;
 
 $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
 (
@@ -91,7 +98,7 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
     (
         '__selector__'                => ['type'],
         'default'                     => '{sitemap_legend},type',
-        \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_SITEMAP => '{sitemap_legend},published,type,name,filename,indexMode,maxAge,priority,rootPages',
+        \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_SITEMAP => '{sitemap_legend},published,type,name,filename,indexMode,maxAge,priority,rootPages,newsList, eventsList',
         \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_INDEX => '{sitemap_legend},published,type,name,filename,maxAge,domain,sitemaps',
     ),
 
@@ -156,6 +163,22 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
             'eval'                    => array('tl_class'=>'clr', 'fieldType'=>'checkbox', 'multiple'=>true),
             'sql'                     => "blob NULL",
         ),
+        'newsList' => array
+        (
+            'exclude'                 => true,
+            'inputType'               => 'checkbox',
+            'eval'                    => array('tl_class'=>'clr', 'fieldType'=>'checkbox', 'multiple'=>true),
+            'options_callback'        => array('tl_jb_sitemap', 'getNewsArchives'),
+            'sql'                     => "blob NULL",
+        ),
+        'eventsList' => array
+        (
+            'exclude'                 => true,
+            'inputType'               => 'checkbox',
+            'eval'                    => array('tl_class'=>'clr', 'fieldType'=>'checkbox', 'multiple'=>true),
+            'options_callback'        => array('tl_jb_sitemap', 'getAllowedCalendars'),
+            'sql'                     => "blob NULL",
+        ),
         'indexMode' => array
         (
             'exclude'                 => true,
@@ -214,4 +237,64 @@ class tl_jb_sitemap
 
         return $options;
     }
+
+    /**
+	 * Get all news archives and return them as array
+	 *
+	 * @return array
+	 */
+	public function getNewsArchives()
+	{
+		$user = BackendUser::getInstance();
+
+		if (!$user->isAdmin && !is_array($user->news))
+		{
+			return array();
+		}
+
+		$arrArchives = array();
+		$objArchives = Database::getInstance()->execute("SELECT id, title FROM tl_news_archive ORDER BY title");
+		$security = System::getContainer()->get('security.helper');
+
+		while ($objArchives->next())
+		{
+			if ($security->isGranted(ContaoNewsPermissions::USER_CAN_EDIT_ARCHIVE, $objArchives->id))
+			{
+				$arrArchives[$objArchives->id] = $objArchives->title;
+			}
+		}
+
+		return $arrArchives;
+	}
+
+    /**
+	 * Return the IDs of the allowed calendars as array
+	 *
+	 * @return array
+	 */
+	public function getAllowedCalendars()
+	{
+		$user = BackendUser::getInstance();
+
+		if ($user->isAdmin)
+		{
+			$objCalendar = CalendarModel::findAll();
+		}
+		else
+		{
+			$objCalendar = CalendarModel::findMultipleByIds($user->calendars);
+		}
+
+		$return = array();
+
+		if ($objCalendar !== null)
+		{
+			while ($objCalendar->next())
+			{
+				$return[$objCalendar->id] = $objCalendar->title;
+			}
+		}
+
+		return $return;
+	}
 }
