@@ -1,11 +1,13 @@
 <?php
 
+use Contao\DataContainer;
+
 $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
 (
     // Config
     'config' => array
     (
-        'dataContainer'               => 'Table',
+        'dataContainer'               => \Contao\DC_Table::class,
         'enableVersioning'            => true,
         'onsubmit_callback' => [
             ['jb_multiple_sitemaps.listener.sitemaps_changed', 'onRecordsModified'],
