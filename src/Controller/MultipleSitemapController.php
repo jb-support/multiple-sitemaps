@@ -281,9 +281,9 @@ class MultipleSitemapController extends AbstractController
         $newsArchiveAdapter = $this->getContaoAdapter(NewsArchiveModel::class);
 
         $newsAdapter = $this->getContaoAdapter(NewsModel::class);
-        $aliases = $this->extractUrls($newsArchiveIds, $newsArchiveAdapter, $newsAdapter);
+        $urls = $this->extractUrls($newsArchiveIds, $newsArchiveAdapter, $newsAdapter);
 
-        return $aliases;
+        return $urls;
     }
 
     protected function getEventsUrls($jbSitemap): array
@@ -292,16 +292,16 @@ class MultipleSitemapController extends AbstractController
         $calendarAdapter = $this->getContaoAdapter(CalendarModel::class);
 
         $eventAdapter = $this->getContaoAdapter(CalendarEventsModel::class);
-        $aliases = $this->extractUrls($calendarIds, $calendarAdapter, $eventAdapter);
+        $urls = $this->extractUrls($calendarIds, $calendarAdapter, $eventAdapter);
 
-        return $aliases;
+        return $urls;
     }
 
     private function extractUrls($archiveIds, $archiveAdapter, $modelAdapter)
     {
         $pageAdapter = $this->getContaoAdapter(PageModel::class);
 
-        $aliases = [];
+        $urls = [];
 
         foreach ($archiveIds as $archiveId) {
             $archive = $archiveAdapter->findBy(['id = ?'], [$archiveId]);
@@ -312,14 +312,14 @@ class MultipleSitemapController extends AbstractController
             $pageAlias = $page->alias;
 
             foreach ($modelsInArchive as $model) {
-                if ($model->stop == "" || $model->stop > $time) {
+                if (empty($model->stop) || $model->stop > $time) {
                     $path = "/" . $page->alias . "/" . $model->alias;
-                    $aliases[] = $this->getUrl($path, $model);
+                    $urls[] = $this->getUrl($path, $model);
                 }
             }
         }
 
-        return $aliases;
+        return $urls;
     }
 
     protected function getUrl(string $strParams, $model): string
