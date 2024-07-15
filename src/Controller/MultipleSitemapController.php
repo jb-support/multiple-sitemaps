@@ -68,7 +68,13 @@ class MultipleSitemapController extends AbstractController
     private function generateSitemap($request, $jbSitemap): Response
     {
         $pageModel = $this->getContaoAdapter(PageModel::class);
-        $rootPages = $pageModel->findPublishedRootPages();
+
+        $unserializeRootPages = unserialize($jbSitemap["rootPages"]);
+
+        $rootPages = [];
+        foreach($unserializeRootPages as $rootPageId) {
+            $rootPages[] = $pageModel->findOneBy(["id = ?", "published = ?"], [$rootPageId, 1]);
+        }
 
         if (null === $rootPages) {
             return new Response('', Response::HTTP_NOT_FOUND);
@@ -217,6 +223,9 @@ class MultipleSitemapController extends AbstractController
                     break;
                 case MultipleSitemapsConfig::INDEX_MODE_ALL:
                     $isInSitemap = true;
+                    break;
+                case MultipleSitemapsConfig::INDEX_MODE_NO_PAGES:
+                    $isInSitemap = false;
                     break;
             }
 
