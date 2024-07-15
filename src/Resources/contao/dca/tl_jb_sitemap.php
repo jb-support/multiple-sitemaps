@@ -8,6 +8,7 @@ use Contao\Database;
 use Contao\DataContainer;
 use Contao\NewsBundle\Security\ContaoNewsPermissions;
 use Contao\CalendarModel;
+use Contao\FaqCategoryModel;
 
 $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
 (
@@ -98,7 +99,7 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
     (
         '__selector__'                => ['type'],
         'default'                     => '{sitemap_legend},type',
-        \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_SITEMAP => '{sitemap_legend},published,type,name,filename,indexMode,maxAge,priority,rootPages,newsList, eventsList',
+        \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_SITEMAP => '{sitemap_legend},published,type,name,filename,indexMode,maxAge,priority,rootPages,newsList, eventsList, faqList',
         \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_INDEX => '{sitemap_legend},published,type,name,filename,maxAge,domain,sitemaps',
     ),
 
@@ -177,6 +178,14 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
             'inputType'               => 'checkbox',
             'eval'                    => array('tl_class'=>'clr', 'fieldType'=>'checkbox', 'multiple'=>true),
             'options_callback'        => array('tl_jb_sitemap', 'getAllowedCalendars'),
+            'sql'                     => "blob NULL",
+        ),
+        'faqList' => array
+        (
+            'exclude'                 => true,
+            'inputType'               => 'checkbox',
+            'eval'                    => array('tl_class'=>'clr', 'fieldType'=>'checkbox', 'multiple'=>true),
+            'options_callback'        => array('tl_jb_sitemap', 'getAllowedFaq'),
             'sql'                     => "blob NULL",
         ),
         'indexMode' => array
@@ -292,6 +301,37 @@ class tl_jb_sitemap
 			while ($objCalendar->next())
 			{
 				$return[$objCalendar->id] = $objCalendar->title;
+			}
+		}
+
+		return $return;
+	}
+
+     /**
+	 * Return the IDs of the allowed calendars as array
+	 *
+	 * @return array
+	 */
+	public function getAllowedFaq()
+	{
+		$user = BackendUser::getInstance();
+
+		if ($user->isAdmin)
+		{
+			$objFaqCategory = FaqCategoryModel::findAll();
+		}
+		else
+		{
+			$objFaqCategory = FaqCategoryModel::findMultipleByIds($user->calendars);
+		}
+
+		$return = array();
+
+		if ($objFaqCategory !== null)
+		{
+			while ($objFaqCategory->next())
+			{
+				$return[$objFaqCategory->id] = $objFaqCategory->title;
 			}
 		}
 

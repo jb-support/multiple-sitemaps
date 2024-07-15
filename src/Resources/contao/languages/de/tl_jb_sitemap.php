@@ -12,6 +12,7 @@ $GLOBALS['TL_LANG']['tl_jb_sitemap']['indexMode'] = ['Indexierungsmodus', 'Index
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['rootPages'] = ['Root Pages', 'Alle ausgewählten Seiten/Unterseiten werden in der Sitemap berücksichtigt'];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['newsList'] = ['Nachrichten-Archive', 'Alle Nachrichten aus den ausgewählten Archiven werden in der Sitemap berücksichtigt'];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['eventsList'] = ['Events-Archive', 'Alle Events aus den ausgewählten Archiven werden in der Sitemap berücksichtigt'];
+$GLOBALS['TL_LANG']['tl_jb_sitemap']['faqList'] = ['FAQ-Archive', 'Alle FAQs aus den ausgewählten Archiven werden in der Sitemap berücksichtigt'];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['sitemaps'] = ['Sitemaps', 'Auswahl der Sitemaps für das Index-File'];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['domain'] = ['Domain', 'Angezeigte Domain für die eingebundenen Sitemaps'];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['calledDomain'] = 'Aufgerufene Domain';
