@@ -7,6 +7,8 @@ namespace JBSupport\MultipleSitemapsBundle\Controller;
 use Contao\ArticleModel;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
+use Contao\FaqCategoryModel;
+use Contao\FaqModel;
 use Contao\CoreBundle\Controller\AbstractController;
 use Contao\CoreBundle\Event\ContaoCoreEvents;
 use Contao\CoreBundle\Event\SitemapEvent;
@@ -282,6 +284,17 @@ class MultipleSitemapController extends AbstractController
 
         $newsAdapter = $this->getContaoAdapter(NewsModel::class);
         $urls = $this->extractUrls($newsArchiveIds, $newsArchiveAdapter, $newsAdapter);
+        return $urls;
+    }
+
+    protected function getFaqUrls($jbSitemap): array
+    {
+        $faqCategoryIds = isset($jbSitemap["faqList"]) ? unserialize($jbSitemap["faqList"]) : [];
+        $faqCategoryAdapter = $this->getContaoAdapter(FaqCategoryModel::class);
+
+        $faqAdapter = $this->getContaoAdapter(FaqModel::class);
+        $urls = $this->extractUrls($faqCategoryIds, $faqCategoryAdapter, $faqAdapter);
+
 
         return $urls;
     }
@@ -313,7 +326,7 @@ class MultipleSitemapController extends AbstractController
 
             foreach ($modelsInArchive as $model) {
                 if (empty($model->stop) || $model->stop > $time) {
-                    $path = "/" . $page->alias . "/" . $model->alias;
+                    $path = "/".$model->alias;
                     $urls[] = $this->getUrl($path, $model);
                 }
             }
