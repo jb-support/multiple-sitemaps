@@ -1,28 +1,29 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types = 1);
 
 namespace JBSupport\MultipleSitemapsBundle\Controller;
 
 use Contao\ArticleModel;
+use Contao\CalendarEventsModel;
+use Contao\CalendarModel;
+use Contao\CoreBundle\Controller\AbstractController;
 use Contao\CoreBundle\Event\ContaoCoreEvents;
 use Contao\CoreBundle\Event\SitemapEvent;
 use Contao\CoreBundle\Routing\Page\PageRegistry;
 use Contao\CoreBundle\Security\ContaoCorePermissions;
-use Contao\CoreBundle\Controller\AbstractController;
-use Contao\PageModel;
-use Contao\NewsModel;
-use Contao\CalendarModel;
-use Contao\CalendarEventsModel;
 use Contao\NewsArchiveModel;
+use Contao\NewsModel;
+use Contao\PageModel;
 use Contao\System;
 use Doctrine\DBAL\Connection;
+use JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig;
+use JBSupport\MultipleSitemapsBundle\Routing\RegisterSitemapRoutes;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
-use JBSupport\MultipleSitemapsBundle\Routing\RegisterSitemapRoutes;
-use JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * @Route(defaults={"_scope" = "frontend"})
@@ -76,7 +77,7 @@ class MultipleSitemapController extends AbstractController
         $rootPages = [];
         $pageModel = $this->getContaoAdapter(PageModel::class);
 
-        foreach($unserializeRootPages as $rootPageId) {
+        foreach ($unserializeRootPages as $rootPageId) {
             $rootPages[] = $pageModel->findOneBy(["id = ?", "published = ?"], [$rootPageId, 1]);
         }
 
@@ -93,6 +94,9 @@ class MultipleSitemapController extends AbstractController
             $urls[] = $this->getPageAndArticleUrls((int) $rootPage->id, [(int)$rootPage->id], $jbSitemap);
             $rootPageIds[] = $rootPage->id;
         }
+
+        // $newsUrls = $this->getNewsUrls($jbSitemap);
+        // $eventsUrls = $this->getEventsUrls($jbSitemap);
         $urls = array_unique(array_merge(...$urls));
 
         $sitemap = new \DOMDocument('1.0', 'UTF-8');
@@ -271,7 +275,8 @@ class MultipleSitemapController extends AbstractController
         return array_merge(...$result);
     }
 
-    protected function getNewsUrls($jbSitemap): array {
+    protected function getNewsUrls($jbSitemap): array
+    {
         $newsArchiveIds = isset($jbSitemap["newsList"]) ? unserialize($jbSitemap["newsList"]) : [];
         $newsArchiveAdapter = $this->getContaoAdapter(NewsArchiveModel::class);
 
@@ -281,21 +286,25 @@ class MultipleSitemapController extends AbstractController
 
         $aliases = [];
 
-        foreach($newsArchiveIds as $archiveId) {
-            $newsArchive = $newsArchiveAdapter->findBy(['id = ?'],[$archiveId]);
+        foreach ($newsArchiveIds as $archiveId) {
+            $newsArchive = $newsArchiveAdapter->findBy(['id = ?'], [$archiveId]);
             $newsInArchive = $newsAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
             $page = $pageAdapter->findById($newsArchive->jumpTo);
             $pageAlias = $page->alias;
 
-            foreach($newsInArchive as $news) {
-                $aliases[] = !$news ?: $page->alias."/".$news->alias;
+            foreach ($newsInArchive as $news) {
+                if ($news) {
+                    $path = "/" . $page->alias . "/" . $news->alias;
+                    $aliases[] = $this->getUrl($path, $news);
+                }
             }
         }
 
         return $aliases;
     }
 
-    protected function getEventsUrls($jbSitemap): array {
+    protected function getEventsUrls($jbSitemap): array
+    {
         $calendarIds = isset($jbSitemap["eventsList"]) ? unserialize($jbSitemap["eventsList"]) : [];
         $calendarAdapter = $this->getContaoAdapter(CalendarModel::class);
 
@@ -305,18 +314,47 @@ class MultipleSitemapController extends AbstractController
 
         $aliases = [];
 
-        foreach($calendarIds as $archiveId) {
+        foreach ($calendarIds as $archiveId) {
             $calendar = $calendarAdapter->findBy(['id = ?'], [$archiveId]);
-            $newsInArchive = $eventAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
+            $eventsInArchive = $eventAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
 
             $page = $pageAdapter->findById($calendar->jumpTo);
             $pageAlias = $page->alias;
 
-            foreach($newsInArchive as $news) {
-                $aliases[] = !$news ?: $page->alias."/".$news->alias;
+            foreach ($eventsInArchive as $event) {
+                if ($event) {
+                    $path = "/" . $page->alias . "/" . $event->alias;
+                    $aliases[] = $this->getUrl($path, $event);
+                }
             }
+
+            return $aliases;
+        }
+    }
+
+    protected function getUrl(string $strParams, $model): string
+    {
+        if (\is_array($strParams)) {
+            $parameters = $strParams;
+        } else {
+            $parameters = array('parameters' => $strParams);
         }
 
-        return $aliases;
+        $objRouter = System::getContainer()->get('contao.routing.content_url_generator');
+
+        try
+        {
+            $strUrl = $objRouter->generate($model, $parameters, UrlGeneratorInterface::ABSOLUTE_URL);
+        } catch (RouteNotFoundException $e) {
+            $pageRegistry = System::getContainer()->get('contao.routing.page_registry');
+
+            if (!$pageRegistry->isRoutable($model)) {
+                throw new ResourceNotFoundException(sprintf($model::class . ' ID %s is not routable', $model->id), 0, $e);
+            }
+
+            throw $e;
+        }
+
+        return $strUrl;
     }
 }
