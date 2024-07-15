@@ -331,7 +331,8 @@ class tl_jb_sitemap
 		{
 			while ($objFaqCategory->next())
 			{
-				$return[$objFaqCategory->id] = $objFaqCategory->title;
+                if(!empty($objFaqCategory->jumpTo))
+				    $return[$objFaqCategory->id] = $objFaqCategory->title;
 			}
 		}
 
