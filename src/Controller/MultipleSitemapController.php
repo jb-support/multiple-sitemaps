@@ -72,17 +72,24 @@ class MultipleSitemapController extends AbstractController
 
     private function generateSitemap($request, $jbSitemap): Response
     {
-        $unserializeRootPages =
-            $jbSitemap["indexMode"] != MultipleSitemapsConfig::INDEX_MODE_NO_PAGES
-            ? unserialize($jbSitemap["rootPages"])
-            : []
-        ;
-
-        $rootPages = [];
         $pageModel = $this->getContaoAdapter(PageModel::class);
 
-        foreach ($unserializeRootPages as $rootPageId) {
-            $rootPages[] = $pageModel->findOneBy(["id = ?", "published = ?"], [$rootPageId, 1]);
+        $rootPages = $pageModel->findPublishedRootPages();
+
+        switch($jbSitemap["indexMode"]) {
+            case MultipleSitemapsConfig::INDEX_MODE_NO_PAGES:
+                $rootPages = [];
+                break;
+            case MultipleSitemapsConfig::INDEX_MODE_ALL:
+                if(!empty($jbSitemap["rootPages"])) {
+                    $rootPages = [];
+                    $unserializeRootPages = unserialize($jbSitemap["rootPages"]);
+
+                    foreach($unserializeRootPages as $usp) {
+                        $rootPages[] = $pageModel->findOneBy(["id = ?", "published = ?"], [$usp, 1]);
+                    }
+                }
+                break;
         }
 
         if (null === $rootPages) {
@@ -99,8 +106,12 @@ class MultipleSitemapController extends AbstractController
             $rootPageIds[] = $rootPage->id;
         }
 
-        // $newsUrls = $this->getNewsUrls($jbSitemap);
-        // $eventsUrls = $this->getEventsUrls($jbSitemap);
+        $newsUrls = $this->getNewsUrls($jbSitemap);
+        $eventsUrls = $this->getEventsUrls($jbSitemap);
+        $faqUrls = $this->getFaqUrls($jbSitemap);
+        array_push($urls, $newsUrls);
+        array_push($urls, $eventsUrls);
+        array_push($urls, $faqUrls);
         $urls = array_unique(array_merge(...$urls));
 
         $sitemap = new \DOMDocument('1.0', 'UTF-8');
@@ -121,10 +132,10 @@ class MultipleSitemapController extends AbstractController
 
         $sitemap->appendChild($urlSet);
 
-        $this->container
-            ->get('event_dispatcher')
-            ->dispatch(new SitemapEvent($sitemap, $request, $rootPageIds), ContaoCoreEvents::SITEMAP)
-        ;
+        // $this->container
+        //     ->get('event_dispatcher')
+        //     ->dispatch(new SitemapEvent($sitemap, $request, $rootPageIds), ContaoCoreEvents::SITEMAP)
+        // ;
 
         // Cache the response for a given time in the shared cache and tag it for invalidation purposes
         $response = new Response((string) $sitemap->saveXML(), 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
