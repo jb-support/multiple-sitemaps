@@ -281,24 +281,7 @@ class MultipleSitemapController extends AbstractController
         $newsArchiveAdapter = $this->getContaoAdapter(NewsArchiveModel::class);
 
         $newsAdapter = $this->getContaoAdapter(NewsModel::class);
-
-        $pageAdapter = $this->getContaoAdapter(PageModel::class);
-
-        $aliases = [];
-
-        foreach ($newsArchiveIds as $archiveId) {
-            $newsArchive = $newsArchiveAdapter->findBy(['id = ?'], [$archiveId]);
-            $newsInArchive = $newsAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
-            $page = $pageAdapter->findById($newsArchive->jumpTo);
-            $pageAlias = $page->alias;
-
-            foreach ($newsInArchive as $news) {
-                if ($news) {
-                    $path = "/" . $page->alias . "/" . $news->alias;
-                    $aliases[] = $this->getUrl($path, $news);
-                }
-            }
-        }
+        $aliases = $this->extractUrls($newsArchiveIds, $newsArchiveAdapter, $newsAdapter);
 
         return $aliases;
     }
@@ -309,27 +292,34 @@ class MultipleSitemapController extends AbstractController
         $calendarAdapter = $this->getContaoAdapter(CalendarModel::class);
 
         $eventAdapter = $this->getContaoAdapter(CalendarEventsModel::class);
+        $aliases = $this->extractUrls($calendarIds, $calendarAdapter, $eventAdapter);
 
+        return $aliases;
+    }
+
+    private function extractUrls($archiveIds, $archiveAdapter, $modelAdapter)
+    {
         $pageAdapter = $this->getContaoAdapter(PageModel::class);
 
         $aliases = [];
 
-        foreach ($calendarIds as $archiveId) {
-            $calendar = $calendarAdapter->findBy(['id = ?'], [$archiveId]);
-            $eventsInArchive = $eventAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
+        foreach ($archiveIds as $archiveId) {
+            $archive = $archiveAdapter->findBy(['id = ?'], [$archiveId]);
+            $time = \Contao\Date::floorToMinute();
 
-            $page = $pageAdapter->findById($calendar->jumpTo);
+            $modelsInArchive = $modelAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
+            $page = $pageAdapter->findById($archive->jumpTo);
             $pageAlias = $page->alias;
 
-            foreach ($eventsInArchive as $event) {
-                if ($event) {
-                    $path = "/" . $page->alias . "/" . $event->alias;
-                    $aliases[] = $this->getUrl($path, $event);
+            foreach ($modelsInArchive as $model) {
+                if ($model->stop == "" || $model->stop > $time) {
+                    $path = "/" . $page->alias . "/" . $model->alias;
+                    $aliases[] = $this->getUrl($path, $model);
                 }
             }
-
-            return $aliases;
         }
+
+        return $aliases;
     }
 
     protected function getUrl(string $strParams, $model): string
