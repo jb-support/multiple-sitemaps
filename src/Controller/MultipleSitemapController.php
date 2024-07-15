@@ -26,6 +26,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Contao\CoreBundle\Routing\Page\PageRoute;
+use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 
 /**
  * @Route(defaults={"_scope" = "frontend"})
@@ -327,7 +329,7 @@ class MultipleSitemapController extends AbstractController
             foreach ($modelsInArchive as $model) {
                 if (empty($model->stop) || $model->stop > $time) {
                     $path = "/".$model->alias;
-                    $urls[] = $this->getUrl($path, $model);
+                    $urls[] = $this->getPageUrl($path, $page);
                 }
             }
         }
@@ -335,7 +337,7 @@ class MultipleSitemapController extends AbstractController
         return $urls;
     }
 
-    protected function getUrl(string $strParams, $model): string
+    protected function getPageUrl(string $strParams, $page): string
     {
         if (\is_array($strParams)) {
             $parameters = $strParams;
@@ -343,16 +345,16 @@ class MultipleSitemapController extends AbstractController
             $parameters = array('parameters' => $strParams);
         }
 
-        $objRouter = System::getContainer()->get('contao.routing.content_url_generator');
+        $objRouter = System::getContainer()->get('router');
 
-        try
-        {
-            $strUrl = $objRouter->generate($model, $parameters, UrlGeneratorInterface::ABSOLUTE_URL);
-        } catch (RouteNotFoundException $e) {
+		try
+		{
+			$strUrl = $objRouter->generate(PageRoute::PAGE_BASED_ROUTE_NAME, array(RouteObjectInterface::CONTENT_OBJECT => $page, 'parameters' => $strParams), UrlGeneratorInterface::ABSOLUTE_URL);
+		} catch (RouteNotFoundException $e) {
             $pageRegistry = System::getContainer()->get('contao.routing.page_registry');
 
-            if (!$pageRegistry->isRoutable($model)) {
-                throw new ResourceNotFoundException(sprintf($model::class . ' ID %s is not routable', $model->id), 0, $e);
+            if (!$pageRegistry->isRoutable($page)) {
+                throw new ResourceNotFoundException(sprintf($page::class . ' ID %s is not routable', $page->id), 0, $e);
             }
 
             throw $e;
