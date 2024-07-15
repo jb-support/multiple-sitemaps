@@ -7,6 +7,7 @@ class MultipleSitemapsConfig
     public const INDEX_MODE_ANY_SELECTED = 2;
     public const INDEX_MODE_NOTHING_SELECTED = 3;
     public const INDEX_MODE_ALL = 4;
+    public const INDEX_MODE_NO_PAGES = 5;
 
     public const TYPE_SITEMAP = 1;
     public const TYPE_INDEX = 2;
@@ -16,6 +17,7 @@ class MultipleSitemapsConfig
         self::INDEX_MODE_ANY_SELECTED,
         self::INDEX_MODE_NOTHING_SELECTED,
         self::INDEX_MODE_ALL,
+        self::INDEX_MODE_NO_PAGES
     ];
 
     public static $types = [

@@ -20,6 +20,7 @@ $GLOBALS['TL_LANG']['tl_jb_sitemap']['indexModeOptions'][1] = ["Precisely select
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['indexModeOptions'][2] = ["Any selected"];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['indexModeOptions'][3] = ["Nothing selected"];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['indexModeOptions'][4] = ["All"];
+$GLOBALS['TL_LANG']['tl_jb_sitemap']['indexModeOptions'][5] = ["No Pages"];
 
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['typeOptions'][1] = ["Sitemap"];
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['typeOptions'][2] = ["Index"];
