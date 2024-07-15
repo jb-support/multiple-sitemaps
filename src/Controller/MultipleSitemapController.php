@@ -7,13 +7,12 @@ namespace JBSupport\MultipleSitemapsBundle\Controller;
 use Contao\ArticleModel;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
+use Contao\CoreBundle\Controller\AbstractController;
+use Contao\CoreBundle\Routing\Page\PageRegistry;
+use Contao\CoreBundle\Routing\Page\PageRoute;
+use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\FaqCategoryModel;
 use Contao\FaqModel;
-use Contao\CoreBundle\Controller\AbstractController;
-use Contao\CoreBundle\Event\ContaoCoreEvents;
-use Contao\CoreBundle\Event\SitemapEvent;
-use Contao\CoreBundle\Routing\Page\PageRegistry;
-use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\NewsArchiveModel;
 use Contao\NewsModel;
 use Contao\PageModel;
@@ -21,13 +20,12 @@ use Contao\System;
 use Doctrine\DBAL\Connection;
 use JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig;
 use JBSupport\MultipleSitemapsBundle\Routing\RegisterSitemapRoutes;
+use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use Contao\CoreBundle\Routing\Page\PageRoute;
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 
 /**
  * @Route(defaults={"_scope" = "frontend"})
@@ -58,7 +56,7 @@ class MultipleSitemapController extends AbstractController
         );
 
         if (!$jbSitemap) {
-            throw new ResourceNotFoundException("SITEMAP NOT FOUND: ". $sitemapId);
+            throw new ResourceNotFoundException("SITEMAP NOT FOUND: " . $sitemapId);
         }
 
         $this->initializeContaoFramework();
@@ -76,16 +74,16 @@ class MultipleSitemapController extends AbstractController
 
         $rootPages = $pageModel->findPublishedRootPages();
 
-        switch($jbSitemap["indexMode"]) {
+        switch ($jbSitemap["indexMode"]) {
             case MultipleSitemapsConfig::INDEX_MODE_NO_PAGES:
                 $rootPages = [];
                 break;
             case MultipleSitemapsConfig::INDEX_MODE_ALL:
-                if(!empty($jbSitemap["rootPages"])) {
+                if (!empty($jbSitemap["rootPages"])) {
                     $rootPages = [];
                     $unserializeRootPages = unserialize($jbSitemap["rootPages"]);
 
-                    foreach($unserializeRootPages as $usp) {
+                    foreach ($unserializeRootPages as $usp) {
                         $rootPages[] = $pageModel->findOneBy(["id = ?", "published = ?"], [$usp, 1]);
                     }
                 }
@@ -99,10 +97,10 @@ class MultipleSitemapController extends AbstractController
         $urls = [];
         $rootPageIds = [];
         $tags = ['jb.sitemap'];
-        $tags[] = 'jb.sitemap.'.$jbSitemap["id"];
+        $tags[] = 'jb.sitemap.' . $jbSitemap["id"];
 
         foreach ($rootPages as $rootPage) {
-            $urls[] = $this->getPageAndArticleUrls((int) $rootPage->id, [(int)$rootPage->id], $jbSitemap);
+            $urls[] = $this->getPageAndArticleUrls((int) $rootPage->id, [(int) $rootPage->id], $jbSitemap);
             $rootPageIds[] = $rootPage->id;
         }
 
@@ -123,7 +121,7 @@ class MultipleSitemapController extends AbstractController
             // Todo lastmod ergänzen
             $urlEl = $sitemap->createElement('url');
             $urlEl->appendChild($loc);
-            if (!empty($jbSitemap["priority"]) && $jbSitemap["priority"]>0) {
+            if (!empty($jbSitemap["priority"]) && $jbSitemap["priority"] > 0) {
                 $prio = $sitemap->createElement('priority', $jbSitemap["priority"]);
                 $urlEl->appendChild($prio);
             }
@@ -132,17 +130,11 @@ class MultipleSitemapController extends AbstractController
 
         $sitemap->appendChild($urlSet);
 
-        // $this->container
-        //     ->get('event_dispatcher')
-        //     ->dispatch(new SitemapEvent($sitemap, $request, $rootPageIds), ContaoCoreEvents::SITEMAP)
-        // ;
-
         // Cache the response for a given time in the shared cache and tag it for invalidation purposes
         $response = new Response((string) $sitemap->saveXML(), 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
-        $response->setSharedMaxAge((int)$jbSitemap["maxAge"]); // will be unset by the MakeResponsePrivateListener if a user is logged in
+        $response->setSharedMaxAge((int) $jbSitemap["maxAge"]); // will be unset by the MakeResponsePrivateListener if a user is logged in
 
         $this->tagResponse($tags);
-
         return $response;
     }
 
@@ -165,7 +157,7 @@ class MultipleSitemapController extends AbstractController
                 if (!empty($jbSitemap["domain"])) {
                     $domain = $jbSitemap["domain"];
                 }
-                $url = $domain . '/'. $childSitemap["filename"];
+                $url = $domain . '/' . $childSitemap["filename"];
                 $loc = $sitemapIndex->createElement('loc', $url);
                 $urlEl = $sitemapIndex->createElement('sitemap');
                 $urlEl->appendChild($loc);
@@ -177,31 +169,12 @@ class MultipleSitemapController extends AbstractController
         $sitemapIndex->appendChild($urlSet);
 
         $response = new Response((string) $sitemapIndex->saveXML(), 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
-        $response->setSharedMaxAge((int)$jbSitemap["maxAge"]); // will be unset by the MakeResponsePrivateListener if a user is logged in
+        $response->setSharedMaxAge((int) $jbSitemap["maxAge"]); // will be unset by the MakeResponsePrivateListener if a user is logged in
 
         $this->tagResponse($tags);
 
         return $response;
     }
-
-    /*
-
-    private function callLegacyHook(PageModel $rootPage, array $pages): array
-    {
-        $systemAdapter = $this->getContaoAdapter(System::class);
-
-        // HOOK: take additional pages
-        if (isset($GLOBALS['TL_HOOKS']['getSearchablePages']) && \is_array($GLOBALS['TL_HOOKS']['getSearchablePages'])) {
-            trigger_deprecation('contao/core-bundle', '4.11', 'Using the "getSearchablePages" hook is deprecated. Use the "contao.sitemap" event instead.');
-
-            foreach ($GLOBALS['TL_HOOKS']['getSearchablePages'] as $callback) {
-                $pages = $systemAdapter->importStatic($callback[0])->{$callback[1]}($pages, $rootPage->id, true, $rootPage->language);
-            }
-        }
-
-        return $pages;
-    }
-    */
 
     // Part from original Contao sitemap code
     private function getPageAndArticleUrls(int $parentPageId, $pageTreeIds, $jbSitemap): array
@@ -277,7 +250,7 @@ class MultipleSitemapController extends AbstractController
                 // Get articles with teaser
                 if (null !== ($articleModels = $articleModelAdapter->findPublishedWithTeaserByPid($pageModel->id, ['ignoreFePreview' => true]))) {
                     foreach ($articleModels as $articleModel) {
-                        $urls[] = $pageModel->getAbsoluteUrl('/articles/'.($articleModel->alias ?: $articleModel->id));
+                        $urls[] = $pageModel->getAbsoluteUrl('/articles/' . ($articleModel->alias ?: $articleModel->id));
                     }
                 }
 
@@ -308,7 +281,6 @@ class MultipleSitemapController extends AbstractController
         $faqAdapter = $this->getContaoAdapter(FaqModel::class);
         $urls = $this->extractUrls($faqCategoryIds, $faqCategoryAdapter, $faqAdapter);
 
-
         return $urls;
     }
 
@@ -323,7 +295,8 @@ class MultipleSitemapController extends AbstractController
         return $urls;
     }
 
-    private function extractUrls($archiveIds, $archiveAdapter, $modelAdapter)
+    //Extract the URLs for each Model in an Archive (Event/News/FAQ);
+    private function extractUrls($archiveIds, $archiveAdapter, $modelAdapter): array
     {
         $pageAdapter = $this->getContaoAdapter(PageModel::class);
 
@@ -339,7 +312,7 @@ class MultipleSitemapController extends AbstractController
 
             foreach ($modelsInArchive as $model) {
                 if (empty($model->stop) || $model->stop > $time) {
-                    $path = "/".$model->alias;
+                    $path = "/" . $model->alias;
                     $urls[] = $this->getPageUrl($path, $page);
                 }
             }
@@ -348,26 +321,20 @@ class MultipleSitemapController extends AbstractController
         return $urls;
     }
 
-    protected function getPageUrl(string $strParams, $page): string
+    //Return the absolute URL to Page/Event/News/FAQ;
+    protected function getPageUrl(string $strParams, PageModel $page): string
     {
-        if (\is_array($strParams)) {
-            $parameters = $strParams;
-        } else {
-            $parameters = array('parameters' => $strParams);
-        }
-
         $objRouter = System::getContainer()->get('router');
 
-		try
-		{
-			$strUrl = $objRouter->generate(PageRoute::PAGE_BASED_ROUTE_NAME, array(RouteObjectInterface::CONTENT_OBJECT => $page, 'parameters' => $strParams), UrlGeneratorInterface::ABSOLUTE_URL);
-		} catch (RouteNotFoundException $e) {
+        try
+        {
+            $strUrl = $objRouter->generate(PageRoute::PAGE_BASED_ROUTE_NAME, array(RouteObjectInterface::CONTENT_OBJECT => $page, 'parameters' => $strParams), UrlGeneratorInterface::ABSOLUTE_URL);
+        } catch (RouteNotFoundException $e) {
             $pageRegistry = System::getContainer()->get('contao.routing.page_registry');
 
             if (!$pageRegistry->isRoutable($page)) {
-                throw new ResourceNotFoundException(sprintf($page::class . ' ID %s is not routable', $page->id), 0, $e);
+                throw new ResourceNotFoundException(sprintf('Page ID %s is not routable', $page->id), 0, $e);
             }
-
             throw $e;
         }
 
