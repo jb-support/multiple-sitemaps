@@ -269,8 +269,8 @@ class MultipleSitemapController extends AbstractController
         $aliases = [];
 
         foreach($newsArchiveIds as $archiveId) {
-            $newsArchive = $newsArchiveAdapter->findById($archiveId);
-            $newsInArchive = $newsAdapter->findByPid($archiveId) ?? [];
+            $newsArchive = $newsArchiveAdapter->findBy(['id = ?'],[$archiveId]);
+            $newsInArchive = $newsAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
             $page = $pageAdapter->findById($newsArchive->jumpTo);
             $pageAlias = $page->alias;
 
@@ -293,8 +293,9 @@ class MultipleSitemapController extends AbstractController
         $aliases = [];
 
         foreach($calendarIds as $archiveId) {
-            $calendar = $calendarAdapter->findById($archiveId);
-            $newsInArchive = $eventAdapter->findByPid($archiveId) ?? [];
+            $calendar = $calendarAdapter->findBy(['id = ?'], [$archiveId]);
+            $newsInArchive = $eventAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
+
             $page = $pageAdapter->findById($calendar->jumpTo);
             $pageAlias = $page->alias;
 
