@@ -308,6 +308,12 @@ class MultipleSitemapController extends AbstractController
 
             $modelsInArchive = $modelAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
             $page = $pageAdapter->findById($archive->jumpTo);
+
+            //NOTE: For FAQ it is possible to remove the jumpTo page, leading to no page
+            if(!$page) {
+                continue;
+            }
+
             $pageAlias = $page->alias;
 
             foreach ($modelsInArchive as $model) {
