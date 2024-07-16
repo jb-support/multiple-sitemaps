@@ -81,10 +81,10 @@ class MultipleSitemapController extends AbstractController
             case MultipleSitemapsConfig::INDEX_MODE_ALL:
                 if (!empty($jbSitemap["rootPages"])) {
                     $rootPages = [];
-                    $unserializeRootPages = unserialize($jbSitemap["rootPages"]);
+                    $unserializedRootPages = unserialize($jbSitemap["rootPages"]);
 
-                    foreach ($unserializeRootPages as $usp) {
-                        $rootPages[] = $pageModel->findOneBy(["id = ?", "published = ?"], [$usp, 1]);
+                    foreach ($unserializedRootPages as $urp) {
+                        $rootPages[] = $pageModel->findOneBy(["id = ?", "published = ?"], [$urp, 1]);
                     }
                 }
                 break;
@@ -104,12 +104,21 @@ class MultipleSitemapController extends AbstractController
             $rootPageIds[] = $rootPage->id;
         }
 
-        $newsUrls = $this->getNewsUrls($jbSitemap);
-        $eventsUrls = $this->getEventsUrls($jbSitemap);
-        $faqUrls = $this->getFaqUrls($jbSitemap);
-        array_push($urls, $newsUrls);
-        array_push($urls, $eventsUrls);
-        array_push($urls, $faqUrls);
+        if(!empty($jbSitemap['newsList'])) {
+            $newsUrls = $this->getNewsUrls($jbSitemap);
+            array_push($urls, $newsUrls);
+        }
+
+        if(!empty($jbSitemap['eventsList'])) {
+            $eventsUrls = $this->getEventsUrls($jbSitemap);
+            array_push($urls, $eventsUrls);
+        }
+
+        if(!empty($jbSitemap['faqList'])) {
+            $faqUrls = $this->getFaqUrls($jbSitemap);
+            array_push($urls, $faqUrls);
+        }
+
         $urls = array_unique(array_merge(...$urls));
 
         $sitemap = new \DOMDocument('1.0', 'UTF-8');
