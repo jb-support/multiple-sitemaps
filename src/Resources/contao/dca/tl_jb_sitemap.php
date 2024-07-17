@@ -1,6 +1,14 @@
 <?php
 
+use Contao\System;
+use Contao\Backend;
+use Contao\BackendUser;
+use Contao\Controller;
+use Contao\Database;
 use Contao\DataContainer;
+use Contao\NewsBundle\Security\ContaoNewsPermissions;
+use Contao\CalendarModel;
+use Contao\FaqCategoryModel;
 
 $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
 (
@@ -90,9 +98,9 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
     'palettes' => array
     (
         '__selector__'                => ['type'],
-        'default'                     => '{sitemap_legend},type',
-        \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_SITEMAP => '{sitemap_legend},published,type,name,filename,indexMode,maxAge,priority,rootPages',
-        \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_INDEX => '{sitemap_legend},published,type,name,filename,maxAge,domain,sitemaps',
+        'default'                     => '{general_legend},type',
+        \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_SITEMAP => '{general_legend},type;{sitemap_legend},name,filename,indexMode,maxAge,priority,rootPages,newsList,eventsList,faqList;{publish_legend},published',
+        \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_INDEX => '{general_legend},type;{index_legend},name,filename,maxAge,domain,sitemaps;{publish_legend},published',
     ),
 
     // Fields
@@ -113,7 +121,7 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
             'options'                 => \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::$types,
             'reference'               => &$GLOBALS['TL_LANG']['tl_jb_sitemap']['typeOptions'],
             'eval'                    => array('tl_class'=>'w50', 'submitOnChange'=>true),
-            'sql'                     => "int(10) NOT NULL default '0'"
+            'sql'                     => "int(10) NOT NULL default '1'"
         ),
         'name' => array
         (
@@ -153,7 +161,31 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
         (
             'exclude'                 => true,
             'inputType'               => 'pageTree',
-            'eval'                    => array('tl_class'=>'clr', 'fieldType'=>'checkbox', 'multiple'=>true),
+            'eval'                    => array('tl_class'=>'clr m12', 'fieldType'=>'checkbox', 'multiple'=>true, 'isSortable' => true),
+            'sql'                     => "blob NULL",
+        ),
+        'newsList' => array
+        (
+            'exclude'                 => true,
+            'inputType'               => 'checkboxWizard',
+            'eval'                    => array('tl_class'=>'w33', 'multiple'=>true),
+            'options_callback'        => array('tl_jb_sitemap', 'getNewsArchives'),
+            'sql'                     => "blob NULL",
+        ),
+        'eventsList' => array
+        (
+            'exclude'                 => true,
+            'inputType'               => 'checkboxWizard',
+            'eval'                    => array('tl_class'=>'w33', 'multiple'=>true),
+            'options_callback'        => array('tl_jb_sitemap', 'getAllowedCalendars'),
+            'sql'                     => "blob NULL",
+        ),
+        'faqList' => array
+        (
+            'exclude'                 => true,
+            'inputType'               => 'checkboxWizard',
+            'eval'                    => array('tl_class'=>'w33', 'multiple'=>true),
+            'options_callback'        => array('tl_jb_sitemap', 'getAllowedFaq'),
             'sql'                     => "blob NULL",
         ),
         'indexMode' => array
@@ -170,7 +202,8 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
             'exclude'                 => true,
             'inputType'               => 'checkboxWizard',
             'foreignKey'              => 'tl_jb_sitemap.name',
-            'eval'                    => array('tl_class'=>'clr', 'multiple'=>true),
+            'options_callback'        => array('tl_jb_sitemap', 'getSitemaps'),
+            'eval'                    => array('tl_class'=>'clr', 'multiple'=>true, 'mandatory' => true),
             'sql'                     => "blob NULL",
         ),
         'domain' => array
@@ -214,4 +247,116 @@ class tl_jb_sitemap
 
         return $options;
     }
+
+    /**
+	 * Get all news archives and return them as array
+	 *
+	 * @return array
+	 */
+	public function getNewsArchives()
+	{
+		$user = BackendUser::getInstance();
+
+		if (!$user->isAdmin && !is_array($user->news))
+		{
+			return array();
+		}
+
+		$arrArchives = array();
+		$objArchives = Database::getInstance()->execute("SELECT id, title FROM tl_news_archive ORDER BY title");
+		$security = System::getContainer()->get('security.helper');
+
+		while ($objArchives->next())
+		{
+			if ($security->isGranted(ContaoNewsPermissions::USER_CAN_EDIT_ARCHIVE, $objArchives->id))
+			{
+				$arrArchives[$objArchives->id] = $objArchives->title;
+			}
+		}
+
+		return $arrArchives;
+	}
+
+    /**
+	 * Return the IDs of the allowed calendars as array
+	 *
+	 * @return array
+	 */
+	public function getAllowedCalendars()
+	{
+		$user = BackendUser::getInstance();
+
+		if ($user->isAdmin)
+		{
+			$objCalendar = CalendarModel::findAll();
+		}
+		else
+		{
+			$objCalendar = CalendarModel::findMultipleByIds($user->calendars);
+		}
+
+		$return = array();
+
+		if ($objCalendar !== null)
+		{
+			while ($objCalendar->next())
+			{
+				$return[$objCalendar->id] = $objCalendar->title;
+			}
+		}
+
+		return $return;
+	}
+
+     /**
+	 * Return the IDs of the allowed FAQ as array
+	 *
+	 * @return array
+	 */
+	public function getAllowedFaq()
+	{
+		$user = BackendUser::getInstance();
+
+		if ($user->isAdmin)
+		{
+			$objFaqCategory = FaqCategoryModel::findAll();
+		}
+		else
+		{
+			$objFaqCategory = FaqCategoryModel::findMultipleByIds($user->calendars);
+		}
+
+		$return = array();
+
+		if ($objFaqCategory !== null)
+		{
+			while ($objFaqCategory->next())
+			{
+                if(!empty($objFaqCategory->jumpTo))
+				    $return[$objFaqCategory->id] = $objFaqCategory->title;
+			}
+		}
+
+		return $return;
+	}
+
+     /**
+	 * Get possible sitemaps and return them as array
+	 *
+	 * @return array
+	 */
+	public function getSitemaps($data)
+	{
+
+        $modelId = (int) $data->id;
+		$return = array();
+		$sitemaps = Database::getInstance()->prepare("SELECT id, name, filename FROM tl_jb_sitemap WHERE name != '' AND id != ? ORDER BY name")->execute($modelId);
+
+		while ($sitemaps->next())
+		{
+			$return[$sitemaps->id] = $sitemaps->name." (".$sitemaps->filename.")";
+		}
+
+		return $return;
+	}
 }

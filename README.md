@@ -17,6 +17,7 @@ composer require jb-support/multiple-sitemaps
 - Define entry priority and cache TTL for each sitemap individually
 - Filter indexed pages by page tree (root or sub nodes possible - even multiple)
 - Create index files for existing sitemaps
+- Add Events, News and FAQs to Sitemap
 
 ## Credits
 
