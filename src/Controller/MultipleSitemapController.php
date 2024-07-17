@@ -313,8 +313,6 @@ class MultipleSitemapController extends AbstractController
 
         foreach ($archiveIds as $archiveId) {
             $archive = $archiveAdapter->findBy(['id = ?'], [$archiveId]);
-            $time = \Contao\Date::floorToMinute();
-
             $modelsInArchive = $modelAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
             $page = $pageAdapter->findById($archive->jumpTo);
 
@@ -325,8 +323,10 @@ class MultipleSitemapController extends AbstractController
 
             $pageAlias = $page->alias;
 
+
+            $time = time();
             foreach ($modelsInArchive as $model) {
-                if (empty($model->stop) || $model->stop > $time) {
+                if ((empty($model->start) || $model->start <= $time) && (empty($model->stop) || $model->stop > $time)) {
                     $path = "/" . $model->alias;
                     $urls[] = $page->getAbsoluteUrl($path);
                 }
