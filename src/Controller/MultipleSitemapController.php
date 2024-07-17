@@ -9,23 +9,19 @@ use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\CoreBundle\Controller\AbstractController;
 use Contao\CoreBundle\Routing\Page\PageRegistry;
-use Contao\CoreBundle\Routing\Page\PageRoute;
 use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\FaqCategoryModel;
 use Contao\FaqModel;
 use Contao\NewsArchiveModel;
 use Contao\NewsModel;
 use Contao\PageModel;
-use Contao\System;
 use Doctrine\DBAL\Connection;
 use JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig;
 use JBSupport\MultipleSitemapsBundle\Routing\RegisterSitemapRoutes;
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * @Route(defaults={"_scope" = "frontend"})
@@ -104,17 +100,17 @@ class MultipleSitemapController extends AbstractController
             $rootPageIds[] = $rootPage->id;
         }
 
-        if(!empty($jbSitemap['newsList'])) {
+        if (!empty($jbSitemap['newsList'])) {
             $newsUrls = $this->getNewsUrls($jbSitemap);
             array_push($urls, $newsUrls);
         }
 
-        if(!empty($jbSitemap['eventsList'])) {
+        if (!empty($jbSitemap['eventsList'])) {
             $eventsUrls = $this->getEventsUrls($jbSitemap);
             array_push($urls, $eventsUrls);
         }
 
-        if(!empty($jbSitemap['faqList'])) {
+        if (!empty($jbSitemap['faqList'])) {
             $faqUrls = $this->getFaqUrls($jbSitemap);
             array_push($urls, $faqUrls);
         }
@@ -317,12 +313,11 @@ class MultipleSitemapController extends AbstractController
             $page = $pageAdapter->findById($archive->jumpTo);
 
             //NOTE: For FAQ it is possible to remove the jumpTo page, leading to no page
-            if(!$page) {
+            if (!$page) {
                 continue;
             }
 
             $pageAlias = $page->alias;
-
 
             $time = time();
             foreach ($modelsInArchive as $model) {
