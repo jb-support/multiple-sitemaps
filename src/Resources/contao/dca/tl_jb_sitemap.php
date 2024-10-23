@@ -9,6 +9,7 @@ use Contao\DataContainer;
 use Contao\NewsBundle\Security\ContaoNewsPermissions;
 use Contao\CalendarModel;
 use Contao\FaqCategoryModel;
+use JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig;
 
 $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
 (
@@ -28,6 +29,9 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
         ],
         'onrestore_callback' => [
             ['jb_multiple_sitemaps.listener.sitemaps_changed', 'onRecordsModified'],
+        ],
+        'onload_callback' => [
+            ['tl_jb_sitemap', 'onLoad'],
         ],
         'sql' => array
         (
@@ -99,8 +103,8 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
     (
         '__selector__'                => ['type'],
         'default'                     => '{general_legend},type',
-        \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_SITEMAP => '{general_legend},type;{sitemap_legend},name,filename,indexMode,maxAge,priority,rootPages,newsList,eventsList,faqList;{publish_legend},published',
-        \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::TYPE_INDEX => '{general_legend},type;{index_legend},name,filename,maxAge,domain,sitemaps;{publish_legend},published',
+        MultipleSitemapsConfig::TYPE_SITEMAP => '{general_legend},type;{sitemap_legend},name,filename,indexMode,maxAge,priority,rootPages,newsList,eventsList,faqList;{publish_legend},published',
+        MultipleSitemapsConfig::TYPE_INDEX => '{general_legend},type;{index_legend},name,filename,maxAge,domain,sitemaps;{publish_legend},published',
     ),
 
     // Fields
@@ -118,7 +122,7 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
         (
             'exclude'                 => true,
             'inputType'               => 'select',
-            'options'                 => \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::$types,
+            'options'                 => MultipleSitemapsConfig::$types,
             'reference'               => &$GLOBALS['TL_LANG']['tl_jb_sitemap']['typeOptions'],
             'eval'                    => array('tl_class'=>'w50', 'submitOnChange'=>true),
             'sql'                     => "int(10) NOT NULL default '1'"
@@ -192,7 +196,7 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
         (
             'exclude'                 => true,
             'inputType'               => 'select',
-            'options'                 => \JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig::$indexModes,
+            'options'                 => MultipleSitemapsConfig::$indexModes,
             'reference'               => &$GLOBALS['TL_LANG']['tl_jb_sitemap']['indexModeOptions'],
             'eval'                    => array('tl_class'=>'w50'),
             'sql'                     => "int(10) NOT NULL default '0'"
@@ -255,7 +259,11 @@ class tl_jb_sitemap
 	 */
 	public function getNewsArchives()
 	{
-		$user = BackendUser::getInstance();
+        if (!class_exists(ContaoNewsPermissions::class)) {
+            return [];
+        }
+
+        $user = BackendUser::getInstance();
 
 		if (!$user->isAdmin && !is_array($user->news))
 		{
@@ -284,6 +292,10 @@ class tl_jb_sitemap
 	 */
 	public function getAllowedCalendars()
 	{
+        if (!class_exists(CalendarModel::class)) {
+            return [];
+        }
+
 		$user = BackendUser::getInstance();
 
 		if ($user->isAdmin)
@@ -315,6 +327,10 @@ class tl_jb_sitemap
 	 */
 	public function getAllowedFaq()
 	{
+        if (!class_exists(FaqCategoryModel::class)) {
+            return [];
+        }
+
 		$user = BackendUser::getInstance();
 
 		if ($user->isAdmin)
@@ -358,5 +374,23 @@ class tl_jb_sitemap
 		}
 
 		return $return;
+	}
+
+    /**
+	 * Hide News, Events, FAQs if the packages are disabled
+	 *
+	 * @return void
+	 */
+	public function onLoad()
+	{
+        if (!class_exists(ContaoNewsPermissions::class)) {
+            $GLOBALS['TL_DCA']['tl_jb_sitemap']['palettes'][MultipleSitemapsConfig::TYPE_SITEMAP] = str_replace('newsList', '', $GLOBALS['TL_DCA']['tl_jb_sitemap']['palettes'][MultipleSitemapsConfig::TYPE_SITEMAP]);
+        }
+        if (!class_exists(CalendarModel::class)) {
+            $GLOBALS['TL_DCA']['tl_jb_sitemap']['palettes'][MultipleSitemapsConfig::TYPE_SITEMAP] = str_replace('eventsList', '', $GLOBALS['TL_DCA']['tl_jb_sitemap']['palettes'][MultipleSitemapsConfig::TYPE_SITEMAP]);
+        }
+        if (!class_exists(FaqCategoryModel::class)) {
+            $GLOBALS['TL_DCA']['tl_jb_sitemap']['palettes'][MultipleSitemapsConfig::TYPE_SITEMAP] = str_replace('faqList', '', $GLOBALS['TL_DCA']['tl_jb_sitemap']['palettes'][MultipleSitemapsConfig::TYPE_SITEMAP]);
+        }
 	}
 }

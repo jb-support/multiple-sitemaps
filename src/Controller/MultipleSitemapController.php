@@ -270,6 +270,12 @@ class MultipleSitemapController extends AbstractController
 
     protected function getNewsUrls($jbSitemap): array
     {
+        /* Case: An archive has been added to the sitemap but the package
+        has been disabled afterwards without updating the database */
+        if (!class_exists(NewsArchiveModel::class)) {
+            return [];
+        }
+
         $newsArchiveIds = isset($jbSitemap["newsList"]) ? unserialize($jbSitemap["newsList"]) : [];
         $newsArchiveAdapter = $this->getContaoAdapter(NewsArchiveModel::class);
 
@@ -280,6 +286,10 @@ class MultipleSitemapController extends AbstractController
 
     protected function getFaqUrls($jbSitemap): array
     {
+        if (!class_exists(FaqCategoryModel::class)) {
+            return [];
+        }
+
         $faqCategoryIds = isset($jbSitemap["faqList"]) ? unserialize($jbSitemap["faqList"]) : [];
         $faqCategoryAdapter = $this->getContaoAdapter(FaqCategoryModel::class);
 
@@ -291,6 +301,10 @@ class MultipleSitemapController extends AbstractController
 
     protected function getEventsUrls($jbSitemap): array
     {
+        if (!class_exists(CalendarModel::class)) {
+            return [];
+        }
+
         $calendarIds = isset($jbSitemap["eventsList"]) ? unserialize($jbSitemap["eventsList"]) : [];
         $calendarAdapter = $this->getContaoAdapter(CalendarModel::class);
 
