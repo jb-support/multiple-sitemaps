@@ -255,7 +255,11 @@ class tl_jb_sitemap
 	 */
 	public function getNewsArchives()
 	{
-		$user = BackendUser::getInstance();
+        if (!class_exists(ContaoNewsPermissions::class)) {
+            return [];
+        }
+
+        $user = BackendUser::getInstance();
 
 		if (!$user->isAdmin && !is_array($user->news))
 		{
@@ -284,6 +288,10 @@ class tl_jb_sitemap
 	 */
 	public function getAllowedCalendars()
 	{
+        if (!class_exists(CalendarModel::class)) {
+            return [];
+        }
+
 		$user = BackendUser::getInstance();
 
 		if ($user->isAdmin)
@@ -315,6 +323,10 @@ class tl_jb_sitemap
 	 */
 	public function getAllowedFaq()
 	{
+        if (!class_exists(FaqCategoryModel::class)) {
+            return [];
+        }
+
 		$user = BackendUser::getInstance();
 
 		if ($user->isAdmin)
