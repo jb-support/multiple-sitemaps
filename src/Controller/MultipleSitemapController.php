@@ -8,6 +8,8 @@ use Contao\ArticleModel;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\CoreBundle\Controller\AbstractController;
+use Contao\CoreBundle\Event\ContaoCoreEvents;
+use Contao\CoreBundle\Event\SitemapEvent;
 use Contao\CoreBundle\Routing\Page\PageRegistry;
 use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\FaqCategoryModel;
@@ -134,6 +136,11 @@ class MultipleSitemapController extends AbstractController
         }
 
         $sitemap->appendChild($urlSet);
+
+        $this->container
+            ->get('event_dispatcher')
+            ->dispatch(new SitemapEvent($sitemap, $request, $rootPageIds), ContaoCoreEvents::SITEMAP)
+        ;
 
         // Cache the response for a given time in the shared cache and tag it for invalidation purposes
         $response = new Response((string) $sitemap->saveXML(), 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
