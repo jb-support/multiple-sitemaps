@@ -1,14 +1,14 @@
 <?php
 
-use Contao\System;
-use Contao\Backend;
 use Contao\BackendUser;
-use Contao\Controller;
+use Contao\CalendarModel;
 use Contao\Database;
 use Contao\DataContainer;
-use Contao\NewsBundle\Security\ContaoNewsPermissions;
-use Contao\CalendarModel;
 use Contao\FaqCategoryModel;
+use Contao\Image;
+use Contao\NewsBundle\Security\ContaoNewsPermissions;
+use Contao\StringUtil;
+use Contao\System;
 use JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig;
 
 $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
@@ -94,6 +94,12 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
             (
                 'href'                => 'act=show',
                 'icon'                => 'show.svg'
+            ),
+            'openSitemapUrl' => array(
+                'label'               => &$GLOBALS['TL_LANG']['tl_jb_sitemap']['openSitemapUrl'],
+                'href'                => 'key=openSitemapUrl',
+                'icon'                => 'mover.svg',
+                'button_callback'     => ['tl_jb_sitemap', 'openSitemapUrl'],
             ),
         ),
     ),
@@ -393,4 +399,22 @@ class tl_jb_sitemap
             $GLOBALS['TL_DCA']['tl_jb_sitemap']['palettes'][MultipleSitemapsConfig::TYPE_SITEMAP] = str_replace('faqList', '', $GLOBALS['TL_DCA']['tl_jb_sitemap']['palettes'][MultipleSitemapsConfig::TYPE_SITEMAP]);
         }
 	}
+
+
+    /**
+     * Open the sitemap URL in a new tab
+     *
+     * @param $data
+     * @param $href
+     * @param $label
+     * @param $title
+     * @param $icon
+     * @param $attributes
+     * @return string
+     */
+    public function openSitemapUrl($data, $href, $label, $title, $icon, $attributes)
+    {
+        $url = $data["filename"];
+        return "<a href='$url' title='" . StringUtil::specialchars($title) . "' 'target='_blank'>" . Image::getHtml($icon, $label) . "</a>";
+    }
 }

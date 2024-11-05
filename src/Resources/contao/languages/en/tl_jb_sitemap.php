@@ -40,3 +40,5 @@ $GLOBALS['TL_LANG']['tl_jb_sitemap']['delete'] = 'Delete sitemap ID %s';
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['toggle']['0'] = 'Publish/unpublish sitemap';
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['toggle']['1'] = 'Unpublish sitemap ID %s';
 $GLOBALS['TL_LANG']['tl_jb_sitemap']['toggle']['2'] = 'Publish sitemap ID %s';
+
+$GLOBALS['TL_LANG']['tl_jb_sitemap']['openSitemapUrl'] = 'Open sitemap %s';
