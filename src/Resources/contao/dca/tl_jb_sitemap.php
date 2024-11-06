@@ -400,7 +400,6 @@ class tl_jb_sitemap
         }
 	}
 
-
     /**
      * Open the sitemap URL in a new tab
      *
@@ -414,7 +413,11 @@ class tl_jb_sitemap
      */
     public function openSitemapUrl($data, $href, $label, $title, $icon, $attributes)
     {
-        $url = $data["filename"];
-        return "<a href='$url' title='" . StringUtil::specialchars($title) . "' 'target='_blank'>" . Image::getHtml($icon, $label) . "</a>";
+        $alias = $data["filename"];
+        $domain = empty($data["domain"]) ? "" : rtrim($data["domain"], '/') . "/";
+
+        $url = $domain . $alias;
+
+        return "<a href='$url' title='" . StringUtil::specialchars($title) . "' target='_blank'>" . Image::getHtml($icon, $label) . "</a>";
     }
 }
