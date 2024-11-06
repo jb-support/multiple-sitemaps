@@ -109,7 +109,7 @@ $GLOBALS['TL_DCA']['tl_jb_sitemap'] = array
     (
         '__selector__'                => ['type'],
         'default'                     => '{general_legend},type',
-        MultipleSitemapsConfig::TYPE_SITEMAP => '{general_legend},type;{sitemap_legend},name,filename,indexMode,maxAge,priority,rootPages,newsList,eventsList,faqList;{publish_legend},published',
+        MultipleSitemapsConfig::TYPE_SITEMAP => '{general_legend},type;{sitemap_legend},name,filename,domain,indexMode,maxAge,priority,rootPages,newsList,eventsList,faqList;{publish_legend},published',
         MultipleSitemapsConfig::TYPE_INDEX => '{general_legend},type;{index_legend},name,filename,maxAge,domain,sitemaps;{publish_legend},published',
     ),
 
@@ -245,8 +245,8 @@ class tl_jb_sitemap
     public function getDomainOptions()
     {
         $options = ["" => &$GLOBALS['TL_LANG']['tl_jb_sitemap']['calledDomain']];
-        $db = \Contao\Database::getInstance();
-        $result = $db->prepare('SELECT `dns`, `useSSL` FROM `tl_page` WHERE `type` = ?')->execute(['root']);
+        $db = Database::getInstance();
+        $result = $db->prepare('SELECT `dns`, `useSSL` FROM `tl_page` WHERE `type` = ?')->execute("root");
 
         while ($result->next()) {
             if (!empty($result->dns)) {
