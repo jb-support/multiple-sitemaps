@@ -22,10 +22,14 @@ use JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig;
 use JBSupport\MultipleSitemapsBundle\Routing\RegisterSitemapRoutes;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
-use Symfony\Component\Routing\Attribute\Route;
 
-#[Route(defaults: ['_scope' => 'frontend'])]
+/**
+ * @Route(defaults={"_scope" = "frontend"})
+ *
+ * @internal
+ */
 class MultipleSitemapController extends AbstractController
 {
     private PageRegistry $pageRegistry;
