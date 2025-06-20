@@ -1,6 +1,6 @@
 controllers:
     resource: ../../Controller/
-    type: annotation
+    type: attribute
 
 jb_multiple_sitemaps:
     resource: .

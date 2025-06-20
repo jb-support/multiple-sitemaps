@@ -3,12 +3,6 @@ services:
         autoconfigure: true
         autowire: true
 
-    Symfony\Component\Routing\Loader\AnnotationDirectoryLoader:
-        arguments:
-            $locator: '@file_locator'
-            $reader: '@annotation_reader'
-        tags: ['routing.loader']
-
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
     JBSupport\MultipleSitemapsBundle\:
