@@ -1,4 +1,5 @@
 <?php
+
 namespace JBSupport\MultipleSitemapsBundle;
 
 use Symfony\Component\HttpKernel\Bundle\Bundle;
