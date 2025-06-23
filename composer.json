@@ -16,10 +16,7 @@
     },
     "require": {
         "php": "^7.4 || ^8.0",
-        "contao/core-bundle": "^5.3"
-    },
-    "conflict": {
-        "contao/core-bundle": "<5.0"
+        "contao/core-bundle": "^4.13 || ^5.3"
     },
     "extra": {
         "contao-manager-plugin": "JBSupport\\MultipleSitemapsBundle\\ContaoManager\\Plugin"
