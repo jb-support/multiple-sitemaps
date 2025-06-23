@@ -32,8 +32,8 @@ class Plugin implements BundlePluginInterface, RoutingPluginInterface
     public function getRouteCollection(LoaderResolverInterface $resolver, KernelInterface $kernel): ?RouteCollection
     {
         $controllerRoutes = $resolver
-            ->resolve(__DIR__ . '/../../Controller/', Kernel::MAJOR_VERSION >= 6 ? 'attribute' : 'annotation')
-            ->load(__DIR__ . '/../../Controller/');
+            ->resolve(__DIR__ . '/../Controller/', Kernel::MAJOR_VERSION >= 6 ? 'attribute' : 'annotation')
+            ->load(__DIR__ . '/../Controller/');
 
         $customRoutes = $resolver
             ->resolve(__DIR__, 'jb_multiple_sitemaps')
