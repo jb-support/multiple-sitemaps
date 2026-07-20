@@ -117,7 +117,7 @@ class MultipleSitemapController extends AbstractController
 
         $sitemap = new \DOMDocument('1.0', 'UTF-8');
         $sitemap->formatOutput = true;
-        $urlSet = $sitemap->createElementNS('https://www.sitemaps.org/schemas/sitemap/0.9', 'urlset');
+        $urlSet = $sitemap->createElementNS('http://www.sitemaps.org/schemas/sitemap/0.9', 'urlset');
 
         foreach ($urls as $url) {
             $loc = $sitemap->createElement('loc', $url);
