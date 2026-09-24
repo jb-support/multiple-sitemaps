@@ -17,18 +17,19 @@ use Contao\FaqModel;
 use Contao\NewsArchiveModel;
 use Contao\NewsModel;
 use Contao\PageModel;
+use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
 use JBSupport\MultipleSitemapsBundle\MultipleSitemapsConfig;
 use JBSupport\MultipleSitemapsBundle\Routing\RegisterSitemapRoutes;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
-#[Route(defaults: ['_scope' => 'frontend'])]
 class MultipleSitemapController extends AbstractController
 {
     private PageRegistry $pageRegistry;
+    private Connection $connection;
 
     public function __construct(PageRegistry $pageRegistry, Connection $connection)
     {
@@ -65,7 +66,6 @@ class MultipleSitemapController extends AbstractController
     private function generateSitemap($request, $jbSitemap): Response
     {
         $pageModel = $this->getContaoAdapter(PageModel::class);
-
         $rootPages = $pageModel->findPublishedRootPages();
 
         switch ($jbSitemap["indexMode"]) {
@@ -73,10 +73,9 @@ class MultipleSitemapController extends AbstractController
                 $rootPages = [];
                 break;
             case MultipleSitemapsConfig::INDEX_MODE_ALL:
-                if (!empty($jbSitemap["rootPages"])) {
+                $unserializedRootPages = StringUtil::deserialize($jbSitemap["rootPages"], true);
+                if (!empty($unserializedRootPages)) {
                     $rootPages = [];
-                    $unserializedRootPages = unserialize($jbSitemap["rootPages"]);
-
                     foreach ($unserializedRootPages as $urp) {
                         $rootPages[] = $pageModel->findOneBy(["id = ?", "published = ?"], [$urp, 1]);
                     }
@@ -84,59 +83,74 @@ class MultipleSitemapController extends AbstractController
                 break;
         }
 
-        if (null === $rootPages) {
+        if (empty($rootPages)) {
             return new Response('', Response::HTTP_NOT_FOUND);
         }
 
         $urls = [];
         $rootPageIds = [];
-        $tags = ['jb.sitemap'];
-        $tags[] = 'jb.sitemap.' . $jbSitemap["id"];
+        $tags = ['jb.sitemap', 'jb.sitemap.' . $jbSitemap["id"]];
 
         foreach ($rootPages as $rootPage) {
             $urls[] = $this->getPageAndArticleUrls((int) $rootPage->id, [(int) $rootPage->id], $jbSitemap);
             $rootPageIds[] = $rootPage->id;
         }
 
-        if (!empty($jbSitemap['newsList'])) {
-            $newsUrls = $this->getNewsUrls($jbSitemap);
-            array_push($urls, $newsUrls);
-        }
+        $selectedNewsIds = !empty(StringUtil::deserialize($jbSitemap['newsList'], true)) ? StringUtil::deserialize($jbSitemap['newsList'], true) : [];
+        $selectedEventsIds = !empty(StringUtil::deserialize($jbSitemap['eventsList'], true)) ? StringUtil::deserialize($jbSitemap['eventsList'], true) : [];
+        $selectedFaqIds = !empty(StringUtil::deserialize($jbSitemap['faqList'], true)) ? StringUtil::deserialize($jbSitemap['faqList'], true) : [];
 
-        if (!empty($jbSitemap['eventsList'])) {
-            $eventsUrls = $this->getEventsUrls($jbSitemap);
-            array_push($urls, $eventsUrls);
+        if (!empty($selectedNewsIds) && class_exists(NewsArchiveModel::class)) {
+            $urls[] = $this->extractUrls($selectedNewsIds, $this->getContaoAdapter(NewsArchiveModel::class), $this->getContaoAdapter(NewsModel::class));
         }
-
-        if (!empty($jbSitemap['faqList'])) {
-            $faqUrls = $this->getFaqUrls($jbSitemap);
-            array_push($urls, $faqUrls);
+        if (!empty($selectedEventsIds) && class_exists(CalendarModel::class)) {
+            $urls[] = $this->extractUrls($selectedEventsIds, $this->getContaoAdapter(CalendarModel::class), $this->getContaoAdapter(CalendarEventsModel::class));
+        }
+        if (!empty($selectedFaqIds) && class_exists(FaqCategoryModel::class)) {
+            $urls[] = $this->extractUrls($selectedFaqIds, $this->getContaoAdapter(FaqCategoryModel::class), $this->getContaoAdapter(FaqModel::class));
         }
 
         $urls = array_unique(array_merge(...$urls));
+
+        $tempSitemap = new \DOMDocument('1.0', 'UTF-8');
+        $tempUrlSet = $tempSitemap->createElementNS('http://www.sitemaps.org/schemas/sitemap/0.9', 'urlset');
+        $tempSitemap->appendChild($tempUrlSet);
+
+        $this->container
+            ->get('event_dispatcher')
+            ->dispatch(new SitemapEvent($tempSitemap, $request, $rootPageIds), ContaoCoreEvents::SITEMAP);
+
+        $eventUrls = [];
+        foreach ($tempSitemap->getElementsByTagName('loc') as $locNode) {
+            if (!empty($locNode->nodeValue)) {
+                $eventUrls[] = $locNode->nodeValue;
+            }
+        }
+
+        $blockedUrls = $this->getBlockedCoreUrls($selectedNewsIds, $selectedEventsIds, $selectedFaqIds);
+        $eventUrls = array_diff($eventUrls, $blockedUrls);
+
+        $finalUrls = array_unique(array_merge($urls, $eventUrls));
 
         $sitemap = new \DOMDocument('1.0', 'UTF-8');
         $sitemap->formatOutput = true;
         $urlSet = $sitemap->createElementNS('http://www.sitemaps.org/schemas/sitemap/0.9', 'urlset');
 
-        foreach ($urls as $url) {
-            $loc = $sitemap->createElement('loc', $url);
-            // Todo lastmod ergänzen
+        foreach ($finalUrls as $url) {
+            $loc = $sitemap->createElement('loc');
+            $loc->appendChild($sitemap->createTextNode($url));
+
             $urlEl = $sitemap->createElement('url');
             $urlEl->appendChild($loc);
+
             if (!empty($jbSitemap["priority"]) && $jbSitemap["priority"] > 0) {
-                $prio = $sitemap->createElement('priority', $jbSitemap["priority"]);
+                $prio = $sitemap->createElement('priority', (string)$jbSitemap["priority"]);
                 $urlEl->appendChild($prio);
             }
             $urlSet->appendChild($urlEl);
         }
 
         $sitemap->appendChild($urlSet);
-
-        $this->container
-            ->get('event_dispatcher')
-            ->dispatch(new SitemapEvent($sitemap, $request, $rootPageIds), ContaoCoreEvents::SITEMAP)
-        ;
 
         // Cache the response for a given time in the shared cache and tag it for invalidation purposes
         $response = new Response((string) $sitemap->saveXML(), 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
@@ -146,9 +160,61 @@ class MultipleSitemapController extends AbstractController
         return $response;
     }
 
+    private function getBlockedCoreUrls(array $selectedNewsIds, array $selectedEventsIds, array $selectedFaqIds): array
+    {
+        $blocked = [];
+
+        if (class_exists(NewsArchiveModel::class)) {
+            $archiveAdapter = $this->getContaoAdapter(NewsArchiveModel::class);
+            if ($all = $archiveAdapter->findAll()) {
+                $unselected = [];
+                foreach ($all as $archive) {
+                    if (!in_array($archive->id, $selectedNewsIds)) {
+                        $unselected[] = $archive->id;
+                    }
+                }
+                if (!empty($unselected)) {
+                    $blocked = array_merge($blocked, $this->extractUrls($unselected, $archiveAdapter, $this->getContaoAdapter(NewsModel::class)));
+                }
+            }
+        }
+
+        if (class_exists(CalendarModel::class)) {
+            $archiveAdapter = $this->getContaoAdapter(CalendarModel::class);
+            if ($all = $archiveAdapter->findAll()) {
+                $unselected = [];
+                foreach ($all as $archive) {
+                    if (!in_array($archive->id, $selectedEventsIds)) {
+                        $unselected[] = $archive->id;
+                    }
+                }
+                if (!empty($unselected)) {
+                    $blocked = array_merge($blocked, $this->extractUrls($unselected, $archiveAdapter, $this->getContaoAdapter(CalendarEventsModel::class)));
+                }
+            }
+        }
+
+        if (class_exists(FaqCategoryModel::class)) {
+            $archiveAdapter = $this->getContaoAdapter(FaqCategoryModel::class);
+            if ($all = $archiveAdapter->findAll()) {
+                $unselected = [];
+                foreach ($all as $archive) {
+                    if (!in_array($archive->id, $selectedFaqIds)) {
+                        $unselected[] = $archive->id;
+                    }
+                }
+                if (!empty($unselected)) {
+                    $blocked = array_merge($blocked, $this->extractUrls($unselected, $archiveAdapter, $this->getContaoAdapter(FaqModel::class)));
+                }
+            }
+        }
+
+        return $blocked;
+    }
+
     private function createSitemapIndex($request, $jbSitemap): Response
     {
-        $selectedSitemaps = unserialize($jbSitemap["sitemaps"]);
+        $selectedSitemaps = StringUtil::deserialize($jbSitemap["sitemaps"], true);
         $tags = ['jb.sitemap'];
 
         $sitemapIndex = new \DOMDocument('1.0', 'UTF-8');
@@ -165,8 +231,10 @@ class MultipleSitemapController extends AbstractController
                 if (!empty($jbSitemap["domain"])) {
                     $domain = $jbSitemap["domain"];
                 }
-                $url = $domain . '/' . $childSitemap["filename"];
-                $loc = $sitemapIndex->createElement('loc', $url);
+                $url = rtrim($domain, '/') . '/' . $childSitemap["filename"];
+                $loc = $sitemapIndex->createElement('loc');
+                $loc->appendChild($sitemapIndex->createTextNode($url));
+
                 $urlEl = $sitemapIndex->createElement('sitemap');
                 $urlEl->appendChild($loc);
                 $urlSet->appendChild($urlEl);
@@ -199,10 +267,8 @@ class MultipleSitemapController extends AbstractController
         }
 
         $articleModelAdapter = $this->getContaoAdapter(ArticleModel::class);
-
         $result = [];
 
-        // Recursively walk through all subpages
         foreach ($pageModels as $pageModel) {
             $newPageTreeIds = $pageTreeIds;
             $newPageTreeIds[] = $pageModel->id;
@@ -213,17 +279,18 @@ class MultipleSitemapController extends AbstractController
 
             $isPublished = $pageModel->published && (!$pageModel->start || $pageModel->start <= time()) && (!$pageModel->stop || $pageModel->stop > time());
 
-            // Check in Sitemap (index mode)
             $isInSitemap = false;
+            $pageSitemaps = StringUtil::deserialize($pageModel->jbSitemaps, true);
+
             switch ($jbSitemap["indexMode"]) {
                 case MultipleSitemapsConfig::INDEX_MODE_PRECISELY_SELECTED:
-                    $isInSitemap = !empty($pageModel->jbSitemaps) && in_array($jbSitemap["id"], unserialize($pageModel->jbSitemaps));
+                    $isInSitemap = !empty($pageSitemaps) && in_array($jbSitemap["id"], $pageSitemaps);
                     break;
                 case MultipleSitemapsConfig::INDEX_MODE_ANY_SELECTED:
-                    $isInSitemap = !empty($pageModel->jbSitemaps);
+                    $isInSitemap = !empty($pageSitemaps);
                     break;
                 case MultipleSitemapsConfig::INDEX_MODE_NOTHING_SELECTED:
-                    $isInSitemap = empty($pageModel->jbSitemaps);
+                    $isInSitemap = empty($pageSitemaps);
                     break;
                 case MultipleSitemapsConfig::INDEX_MODE_ALL:
                     $isInSitemap = true;
@@ -233,10 +300,10 @@ class MultipleSitemapController extends AbstractController
                     break;
             }
 
-            // Check in Filetree
             $isInFiletree = false;
-            if (!empty($jbSitemap["rootPages"])) {
-                $rootPages = unserialize($jbSitemap["rootPages"]);
+            $rootPages = StringUtil::deserialize($jbSitemap["rootPages"], true);
+
+            if (!empty($rootPages)) {
                 if (count(array_intersect($rootPages, $newPageTreeIds)) > 0) {
                     $isInFiletree = true;
                 }
@@ -244,10 +311,18 @@ class MultipleSitemapController extends AbstractController
                 $isInFiletree = true;
             }
 
+            $isReaderPage = !empty($pageModel->requireItem);
+            if (!$isReaderPage && $this->pageRegistry->isRoutable($pageModel)) {
+                $route = $this->pageRegistry->getRoute($pageModel);
+                if (in_array('parameters', $route->compile()->getVariables(), true)) {
+                    $isReaderPage = true;
+                }
+            }
+
             if ($isInSitemap
                 && $isInFiletree
                 && $isPublished
-                && !$pageModel->requireItem
+                && !$isReaderPage
                 && 'noindex,nofollow' !== $pageModel->robots
                 && $this->pageRegistry->supportsContentComposition($pageModel)
                 && $this->pageRegistry->isRoutable($pageModel)
@@ -255,7 +330,6 @@ class MultipleSitemapController extends AbstractController
             ) {
                 $urls = [$pageModel->getAbsoluteUrl()];
 
-                // Get articles with teaser
                 if (null !== ($articleModels = $articleModelAdapter->findPublishedWithTeaserByPid($pageModel->id, ['ignoreFePreview' => true]))) {
                     foreach ($articleModels as $articleModel) {
                         $urls[] = $pageModel->getAbsoluteUrl('/articles/' . ($articleModel->alias ?: $articleModel->id));
@@ -271,70 +345,28 @@ class MultipleSitemapController extends AbstractController
         return array_merge(...$result);
     }
 
-    protected function getNewsUrls($jbSitemap): array
-    {
-        /* Case: An archive has been added to the sitemap but the package
-        has been disabled afterwards without updating the database */
-        if (!class_exists(NewsArchiveModel::class)) {
-            return [];
-        }
-
-        $newsArchiveIds = isset($jbSitemap["newsList"]) ? unserialize($jbSitemap["newsList"]) : [];
-        $newsArchiveAdapter = $this->getContaoAdapter(NewsArchiveModel::class);
-
-        $newsAdapter = $this->getContaoAdapter(NewsModel::class);
-        $urls = $this->extractUrls($newsArchiveIds, $newsArchiveAdapter, $newsAdapter);
-        return $urls;
-    }
-
-    protected function getFaqUrls($jbSitemap): array
-    {
-        if (!class_exists(FaqCategoryModel::class)) {
-            return [];
-        }
-
-        $faqCategoryIds = isset($jbSitemap["faqList"]) ? unserialize($jbSitemap["faqList"]) : [];
-        $faqCategoryAdapter = $this->getContaoAdapter(FaqCategoryModel::class);
-
-        $faqAdapter = $this->getContaoAdapter(FaqModel::class);
-        $urls = $this->extractUrls($faqCategoryIds, $faqCategoryAdapter, $faqAdapter);
-
-        return $urls;
-    }
-
-    protected function getEventsUrls($jbSitemap): array
-    {
-        if (!class_exists(CalendarModel::class)) {
-            return [];
-        }
-
-        $calendarIds = isset($jbSitemap["eventsList"]) ? unserialize($jbSitemap["eventsList"]) : [];
-        $calendarAdapter = $this->getContaoAdapter(CalendarModel::class);
-
-        $eventAdapter = $this->getContaoAdapter(CalendarEventsModel::class);
-        $urls = $this->extractUrls($calendarIds, $calendarAdapter, $eventAdapter);
-
-        return $urls;
-    }
-
-    //Extract the URLs for each Model in an Archive (Event/News/FAQ);
     private function extractUrls($archiveIds, $archiveAdapter, $modelAdapter): array
     {
         $pageAdapter = $this->getContaoAdapter(PageModel::class);
-
         $urls = [];
 
-        foreach ($archiveIds as $archiveId) {
-            $archive = $archiveAdapter->findBy(['id = ?'], [$archiveId]);
-            $modelsInArchive = $modelAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]) ?? [];
-            $page = $pageAdapter->findById($archive->jumpTo);
+        if (!is_array($archiveIds)) {
+            return $urls;
+        }
 
-            //NOTE: For FAQ it is possible to remove the jumpTo page, leading to no page
-            if (!$page) {
+        foreach ($archiveIds as $archiveId) {
+            $archive = $archiveAdapter->findById($archiveId);
+
+            if (!$archive) {
                 continue;
             }
 
-            $pageAlias = $page->alias;
+            $modelsInArchive = $modelAdapter->findBy(['pid = ?', 'published = ?'], [$archiveId, 1]);
+            $page = $pageAdapter->findById($archive->jumpTo);
+
+            if (!$page || !$modelsInArchive) {
+                continue;
+            }
 
             $time = time();
             foreach ($modelsInArchive as $model) {

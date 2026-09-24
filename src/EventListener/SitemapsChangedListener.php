@@ -40,7 +40,7 @@ class SitemapsChangedListener
      */
     private $fs;
 
-    public function __construct(RouterInterface $router, string $cacheDir, ContaoFramework $framework, Filesystem $fs = null)
+    public function __construct(RouterInterface $router, string $cacheDir, ContaoFramework $framework, ?Filesystem $fs = null)
     {
         if (null === $fs) {
             $fs = new Filesystem();

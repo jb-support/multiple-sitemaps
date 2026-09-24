@@ -46,7 +46,7 @@ class RegisterSitemapRoutes extends Loader
 
         $this->loaded = true;
         $collection = new RouteCollection();
-        
+
         $count=0;
         foreach ($this->generateRoutes() as $route) {
             $collection->add('jb_multiple_sitemaps_'.$count++, $route);
@@ -90,6 +90,7 @@ class RegisterSitemapRoutes extends Loader
     {
         $route = new Route(rawurldecode("/". $url));
         $route->setDefault('_controller', 'JBSupport\MultipleSitemapsBundle\Controller\MultipleSitemapController::index');
+        $route->setDefault('_scope', 'frontend');
         $route->setDefault(self::ATTRIBUTE_NAME, $sitemapId);
         $route->setOption('utf8', true);
         $route->setMethods('GET');
