@@ -1,6 +1,6 @@
 <?php
 
-declare (strict_types = 1);
+declare(strict_types=1);
 
 namespace JBSupport\MultipleSitemapsBundle\Controller;
 
@@ -115,34 +115,50 @@ class MultipleSitemapController extends AbstractController
 
         $urls = array_unique(array_merge(...$urls));
 
+        $tempSitemap = new \DOMDocument('1.0', 'UTF-8');
+        $tempUrlSet = $tempSitemap->createElementNS('http://www.sitemaps.org/schemas/sitemap/0.9', 'urlset');
+        $tempSitemap->appendChild($tempUrlSet);
+
+        $this->container
+            ->get('event_dispatcher')
+            ->dispatch(new SitemapEvent($tempSitemap, $request, $rootPageIds), ContaoCoreEvents::SITEMAP);
+
+        $eventUrls = [];
+        foreach ($tempSitemap->getElementsByTagName('url') as $urlNode) {
+            $locNode = $urlNode->getElementsByTagName('loc')->item(0);
+            if ($locNode) {
+                $eventUrls[] = $locNode->nodeValue;
+            }
+        }
+
+        $finalUrls = array_unique(array_merge($urls, $eventUrls));
+
         $sitemap = new \DOMDocument('1.0', 'UTF-8');
         $sitemap->formatOutput = true;
         $urlSet = $sitemap->createElementNS('http://www.sitemaps.org/schemas/sitemap/0.9', 'urlset');
 
-        foreach ($urls as $url) {
+        foreach ($finalUrls as $url) {
             $loc = $sitemap->createElement('loc', $url);
             // Todo lastmod ergänzen
             $urlEl = $sitemap->createElement('url');
             $urlEl->appendChild($loc);
+
             if (!empty($jbSitemap["priority"]) && $jbSitemap["priority"] > 0) {
                 $prio = $sitemap->createElement('priority', (string)$jbSitemap["priority"]);
                 $urlEl->appendChild($prio);
             }
+
             $urlSet->appendChild($urlEl);
         }
 
         $sitemap->appendChild($urlSet);
-
-        $this->container
-            ->get('event_dispatcher')
-            ->dispatch(new SitemapEvent($sitemap, $request, $rootPageIds), ContaoCoreEvents::SITEMAP)
-        ;
 
         // Cache the response for a given time in the shared cache and tag it for invalidation purposes
         $response = new Response((string) $sitemap->saveXML(), 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
         $response->setSharedMaxAge((int) $jbSitemap["maxAge"]); // will be unset by the MakeResponsePrivateListener if a user is logged in
 
         $this->tagResponse($tags);
+
         return $response;
     }
 
@@ -255,7 +271,8 @@ class MultipleSitemapController extends AbstractController
                 }
             }
 
-            if ($isInSitemap
+            if (
+                $isInSitemap
                 && $isInFiletree
                 && $isPublished
                 && !$isReaderPage
